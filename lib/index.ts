@@ -9,10 +9,6 @@ import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
 import * as marked from "marked";
 
-dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
-    return chunk.write(marked(params.content));
-};
-
 class DustStream extends Readable {
   constructor(template: string, context: any) {
     super();
@@ -74,13 +70,13 @@ class Post {
 
 export = class Squick extends Readable {
   private posts: Post[] = [];
-  private templates: {[name: string]: boolean} = {};
 
   private postsRendered = 0;
   private allPostsAvailable = false;
 
   constructor(content: Readable, views: Readable) {
       super({objectMode: true});
+      this.setupDust();
 
       content.on("data", (f: File) => {
           concatFile(f, (f, c) => this.addPost(f, c));
@@ -93,6 +89,18 @@ export = class Squick extends Readable {
       views.on("data", (f: File) => {
           concatFile(f, (f, c) => this.addTemplate(f, c));
       }).on("end", () => this.emit("templates-ended"));
+  }
+
+  setupDust() {
+    dust.onLoad = (templateName: string, options, callback: Function) => {
+        return this.getTemplate(templateName)
+          .then((template) => callback(null, template),
+                (err) => callback(err, null));
+    };
+
+    dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
+      return chunk.write(marked(params.content));
+    };
   }
 
   _read() {
@@ -139,14 +147,13 @@ export = class Squick extends Readable {
 
   addTemplate(file: File, contents: string) {
       dust.compileFn(contents, file.relative);
-      this.templates[file.relative] = true;
       this.emit("template-available", file.relative);
   }
 
-  getTemplate(name: string): Promise<any> {
-      if (name in this.templates) {
+  getTemplate(name: string): Promise<dust.Template> {
+      if (name in dust.cache) {
           console.log("found template", name);
-          return Promise.resolve();
+          return Promise.resolve(dust.cache[name]);
       }
 
       return new Promise((resolve, reject) => {
