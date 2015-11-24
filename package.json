@@ -1,0 +1,16 @@
+{
+  "name": "squick",
+  "version": "0.0.0",
+  "description": "polymorphic static site generator",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "concat-stream": "^1.5.1",
+    "dustjs-linkedin": "^2.7.2",
+    "vinyl": "^1.1.0"
+  }
+}
