@@ -7,6 +7,11 @@ import {EventEmitter} from "events";
 import * as glob from "glob";
 import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
+import * as marked from "marked";
+
+dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
+    return chunk.write(marked(params.content));
+};
 
 class DustStream extends Readable {
   constructor(template: string, context: any) {
@@ -32,7 +37,7 @@ function concatFile(f: File, cb: (f: File, s: string) => any) {
 
 class Post {
   meta: any;
-  contents: string;
+  content: string;
 
   constructor(public file: File, contents: string) {
     this.parseContents(contents);
@@ -45,7 +50,7 @@ class Post {
   parseContents(source: string) {
     if (source[0] != "{") {
       this.meta = {};
-      this.contents = source;
+      this.content = source;
       console.log("no front matter found in", this.file.path);
       return;
     }
@@ -59,7 +64,7 @@ class Post {
       }
 
       if (nested == 0) {
-        this.contents = source.substr(i + 1);
+        this.content = source.substr(i + 1);
         this.meta = JSON.parse(source.substr(0, i + 1));
         break;
       }
@@ -173,6 +178,6 @@ export = class Squick extends Readable {
       template = template || post.meta.template;
 
       return this.getTemplate(template)
-        .then(() => new DustStream(template, post.meta));
+        .then(() => new DustStream(template, {post: post}));
   }
 }
