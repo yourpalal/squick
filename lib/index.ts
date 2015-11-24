@@ -19,9 +19,7 @@ class DustStream extends Readable {
       .on("error", (err) => { this.emit("error", err); });
   }
 
-  _read() {
-      // nothing to do but wait
-  }
+  _read() { /* nothing to do but wait */ }
 }
 
 function concatFile(f: File, cb: (f: File, s: string) => any) {
@@ -71,7 +69,7 @@ class Post {
 export = class Squick extends Readable {
   private posts: Post[] = [];
 
-  private postsRendered = 0;
+  private postsRemaining = 0;
   private allPostsAvailable = false;
 
   constructor(content: Readable, views: Readable) {
@@ -79,6 +77,7 @@ export = class Squick extends Readable {
       this.setupDust();
 
       content.on("data", (f: File) => {
+          this.postsRemaining++;
           concatFile(f, (f, c) => this.addPost(f, c));
       }).on("end", () => {
         this.allPostsAvailable = true;
@@ -93,6 +92,7 @@ export = class Squick extends Readable {
 
   setupDust() {
     dust.onLoad = (templateName: string, options, callback: Function) => {
+        console.log("loading template:", templateName);
         return this.getTemplate(templateName)
           .then((template) => callback(null, template),
                 (err) => callback(err, null));
@@ -103,9 +103,7 @@ export = class Squick extends Readable {
     };
   }
 
-  _read() {
-    // cannot do anything really :(
-  }
+  _read() { /* nothing to do but wait */ }
 
   getPost(name: string): Promise<Post> {
       for (var post of this.posts) {
@@ -132,12 +130,12 @@ export = class Squick extends Readable {
       this.emit("post-available", post);
 
       this.push(this.renderPostForFile(post));
-      this.postsRendered++;
+      this.postsRemaining--;
       this.endIfFinished();
   }
 
   endIfFinished() {
-      if (this.postsRendered == this.posts.length && this.allPostsAvailable) {
+      if (this.postsRemaining == 0 && this.allPostsAvailable) {
           this.push(null);
       }
   }
@@ -149,7 +147,6 @@ export = class Squick extends Readable {
 
   getTemplate(name: string): Promise<dust.Template> {
       if (name in dust.cache) {
-          console.log("found template", name);
           return Promise.resolve(dust.cache[name]);
       }
 

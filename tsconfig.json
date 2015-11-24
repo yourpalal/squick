@@ -21,12 +21,18 @@
     ],
     "files": [
         "lib/index.ts",
+        "tests/custom_assertions.d.ts",
+        "tests/squick_tests.ts",
         "typings/dustjs-linkedin/dustjs-linkedin.d.ts",
         "typings/es6-promise/es6-promise.d.ts",
         "typings/glob/glob.d.ts",
+        "typings/marked/marked.d.ts",
+        "typings/mocha/mocha.d.ts",
         "typings/node/node.d.ts",
         "typings/others.d.ts",
+        "typings/should/should.d.ts",
         "typings/tsd.d.ts",
+        "typings/vinyl-buffer/vinyl-buffer.d.ts",
         "typings/vinyl/vinyl.d.ts"
     ],
     "atom": {

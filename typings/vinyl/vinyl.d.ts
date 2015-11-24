@@ -119,6 +119,8 @@ declare module 'vinyl' {
 		* Returns a pretty String interpretation of the File. Useful for console.log.
 		*/
 		public inspect(): string;
+
+		static isVinyl(a: any): boolean;
 	}
 
 	export = File;
