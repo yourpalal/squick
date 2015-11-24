@@ -131,12 +131,9 @@ export = class Squick extends Readable {
       this.posts.push(post);
       this.emit("post-available", post);
 
-      this.renderPostForFile(post)
-        .then((f: File) => {
-          this.push(f);
-          this.postsRendered++;
-          this.endIfFinished();
-        });
+      this.push(this.renderPostForFile(post));
+      this.postsRendered++;
+      this.endIfFinished();
   }
 
   endIfFinished() {
@@ -167,24 +164,19 @@ export = class Squick extends Readable {
       });
   }
 
-  renderPostForFile(post: Post): Promise<File> {
-      return this.startRender(post)
-        .then((content) => {
-            let result = new File({
-                base: post.file.base,
-                path: post.file.path,
-                contents: content
-            });
+  renderPostForFile(post: Post): File {
+      let result = new File({
+          base: post.file.base,
+          path: post.file.path,
+          contents: this.startRender(post)
+      });
 
-            result.extname = ".html";
-            return result;
-        });
+      result.extname = ".html";
+      return result;
   }
 
-  startRender(post: Post, template: string = null): Promise<Readable> {
+  startRender(post: Post, template: string = null): Readable {
       template = template || post.meta.template;
-
-      return this.getTemplate(template)
-        .then(() => new DustStream(template, {post: post}));
+      return new DustStream(template, {post: post});
   }
 }
