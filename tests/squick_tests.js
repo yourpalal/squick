@@ -17,13 +17,6 @@ should["Assertion"].add("vinylFile", function (expected) {
     this.obj.should.have.property("base", expected.base);
     this.obj.contents.toString().should.equal(expected.contents.toString());
 });
-function getEvent(emitter, event) {
-    return new Promise(function (resolve, reject) {
-        emitter.once(event, function (arg) {
-            resolve(arg);
-        });
-    });
-}
 var Src = (function (_super) {
     __extends(Src, _super);
     function Src(files) {
@@ -62,42 +55,42 @@ var partialIncluder = new File({
     path: "b/t/simple.html",
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
-function checkSquicked(posts, templates, test) {
-    new Squick(new Src(posts), new Src(templates))
-        .pipe(buffer())
-        .pipe(concat(function (files) { return test(files); }));
+function squickToFiles(posts, templates) {
+    var result = new Squick(new Src(posts), new Src(templates))
+        .pipe(buffer());
+    return new Promise(function (resolve, reject) {
+        result.on("error", function (err) { return reject(err); });
+        result.pipe(concat(function (files) { return resolve(files); }));
+    });
 }
 describe("squick", function () {
     beforeEach(function () {
         dust.cache = {};
     });
-    it("renders files via templates", function (done) {
-        checkSquicked([simpleContent], [simpleTemplate], function (files) {
+    it("renders files via templates", function () {
+        return squickToFiles([simpleContent], [simpleTemplate]).then(function (files) {
             files.should.have.length(1);
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
                 contents: new Buffer("page content:  wow")
             });
-            done();
         });
     });
-    it("can include partials", function (done) {
-        checkSquicked([simpleContent], [partial, partialIncluder], function (files) {
+    it("can include partials", function () {
+        return squickToFiles([simpleContent], [partial, partialIncluder]).then(function (files) {
             files.should.have.length(1);
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
                 contents: new Buffer("cool partial, bro")
             });
-            done();
         });
     });
     it("raises an error when a template is missing", function () {
-        var files = new Squick(new Src([simpleContent]), new Src([]))
-            .pipe(buffer());
-        return getEvent(files, "error")
-            .then(function (err) {
+        return squickToFiles([simpleContent], []).then(function (files) {
+            return Promise.reject("did not produce error message");
+        }, function (err) {
             err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         });
     });
