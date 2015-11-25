@@ -86,7 +86,9 @@ interface ShouldAssertion {
   key(key: string): ShouldAssertion;
   haveOwnProperty(name: string, description?: string): ShouldAssertion;
   greaterThan(n: number, description?: string): ShouldAssertion;
+  greaterThanOrEqual(n: number, description?: string): ShouldAssertion;
   lessThan(n: number, description?: string): ShouldAssertion;
+  lessThanOrEqual(n: number, description?: string): ShouldAssertion;
 }
 
 interface ShouldInternal {

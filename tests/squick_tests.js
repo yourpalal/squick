@@ -17,6 +17,13 @@ should["Assertion"].add("vinylFile", function (expected) {
     this.obj.should.have.property("base", expected.base);
     this.obj.contents.toString().should.equal(expected.contents.toString());
 });
+function getEvent(emitter, event) {
+    return new Promise(function (resolve, reject) {
+        emitter.once(event, function (arg) {
+            resolve(arg);
+        });
+    });
+}
 var Src = (function (_super) {
     __extends(Src, _super);
     function Src(files) {
@@ -84,6 +91,14 @@ describe("squick", function () {
                 contents: new Buffer("cool partial, bro")
             });
             done();
+        });
+    });
+    it("raises an error when a template is missing", function () {
+        var files = new Squick(new Src([simpleContent]), new Src([]))
+            .pipe(buffer());
+        return getEvent(files, "error")
+            .then(function (err) {
+            err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         });
     });
 });

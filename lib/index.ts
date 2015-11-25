@@ -71,6 +71,7 @@ export = class Squick extends Readable {
 
   private postsRemaining = 0;
   private allPostsAvailable = false;
+  private allTemplatesAvailable = false;
 
   constructor(content: Readable, views: Readable) {
       super({objectMode: true});
@@ -87,12 +88,14 @@ export = class Squick extends Readable {
 
       views.on("data", (f: File) => {
           concatFile(f, (f, c) => this.addTemplate(f, c));
-      }).on("end", () => this.emit("templates-ended"));
+      }).on("end", () => {
+          this.allTemplatesAvailable = true;
+          this.emit("templates-ended");
+      });
   }
 
   setupDust() {
     dust.onLoad = (templateName: string, options, callback: Function) => {
-        console.log("loading template:", templateName);
         return this.getTemplate(templateName)
           .then((template) => callback(null, template),
                 (err) => callback(err, null));
@@ -150,7 +153,13 @@ export = class Squick extends Readable {
           return Promise.resolve(dust.cache[name]);
       }
 
+      let errorMessage = `template ${name} not found`;
+      if (this.allTemplatesAvailable) {
+          return Promise.reject(errorMessage);
+      }
+
       return new Promise((resolve, reject) => {
+          let onFinished = () => reject(`template ${name} not found`);
           let onAvailable = (templateName) => {
               if (templateName == name) {
                 resolve();
@@ -158,6 +167,7 @@ export = class Squick extends Readable {
               }
           };
           this.on("template-available", onAvailable);
+          this.on("templates-ended", onFinished);
       });
   }
 

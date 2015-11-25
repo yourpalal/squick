@@ -1,4 +1,5 @@
 /// <reference path="../typings/tsd.d.ts"/>
+/// <reference path="./custom_assertions.d.ts"/>
 
 import Squick = require("../lib/index");
 
@@ -10,11 +11,6 @@ import buffer = require("vinyl-buffer");
 
 import should = require("should");
 
-// custom assertion
-declare interface ShouldAssertion {
-    vinylFile(a: any): ShouldAssertion;
-}
-
 should["Assertion"].add("vinylFile", function(expected) {
     this.params = {operator: "to be a vinyl file"};
     File.isVinyl(this.obj).should.be.ok;
@@ -23,6 +19,14 @@ should["Assertion"].add("vinylFile", function(expected) {
     this.obj.should.have.property("base", expected.base);
     this.obj.contents.toString().should.equal(expected.contents.toString());
 });
+
+function getEvent<T>(emitter, event: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+        emitter.once(event, (arg) => {
+            resolve(arg);
+        });
+    });
+}
 
 
 class Src extends Readable {
@@ -101,5 +105,15 @@ describe("squick", () => {
             });
             done();
         });
+    });
+
+    it("raises an error when a template is missing", () => {
+        let files = new Squick(new Src([simpleContent]), new Src([]))
+            .pipe(buffer());
+
+        return getEvent<string>(files, "error")
+            .then((err: string) => {
+                err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
+            });
     });
 });
