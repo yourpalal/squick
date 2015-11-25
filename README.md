@@ -33,6 +33,7 @@ The following configuration keys are recognized by Squick:
 * `site` (optional) an arbitrary object which will be passed to all templates as `site`
 * `filters` (optional) an object containing dust filters to be added to the dust environment.
 * `helpers` (optional) an object containing dust helpers to be added to the dust environment.
+* `marked` (optional) configuration for [marked](https://www.npmjs.com/package/marked).
 
 ## front-matter
 

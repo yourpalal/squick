@@ -67,6 +67,7 @@ interface SquickOptions {
     site?: any;
     filters?: { [key: string]: (value: string) => string };
     helpers?: { [key: string]: (chk: dust.Chunk, ctx: dust.Context, bodies?: any, params?: any) => any };
+    marked?: any;
 }
 
 export = class Squick extends Readable {
@@ -77,6 +78,10 @@ export = class Squick extends Readable {
 
     constructor(private options: SquickOptions) {
         super({ objectMode: true });
+        if (this.options.marked) {
+            marked.setOptions(this.options.marked);
+        }
+
         this.setupDust();
 
         options.content
