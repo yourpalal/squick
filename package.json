@@ -2,12 +2,23 @@
   "name": "squick",
   "version": "0.0.0",
   "description": "dustjs + markdown for gulp",
-  "main": "index.js",
+  "main": "./lib/index.js",
+  "homepage": "https://github.com/yourpalal/squick",
+  "repository": "git://github.com/yourpalal/squick.git",
+  "bugs": {"url": "https://github.com/yourpalal/squick/issues"},
   "scripts": {
     "test": "mocha tests/"
   },
   "author": "",
   "license": "MIT",
+  "keywords": [
+    "gulp-plugin",
+    "gulp",
+    "markdown",
+    "html",
+    "static",
+    "generator"
+  ],
   "dependencies": {
     "dustjs-helpers": "^1.7.3",
     "dustjs-linkedin": "^2.7.2",
