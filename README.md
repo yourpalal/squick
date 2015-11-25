@@ -1,6 +1,8 @@
 # Squick
 
-Squick is designed to make it easy to build static sites with [gulp](http://gulpjs.com/) and [dustjs](http://www.dustjs.com/docs/api/), and [markdown](https://help.github.com/articles/markdown-basics/) via [marked](https://www.npmjs.com/package/marked).
+![travis-ci build status](https://travis-ci.org/yourpalal/squick.svg)
+
+Squick is designed to make it easy to build static sites with [gulp](http://gulpjs.com/) and [dustjs](http://www.dustjs.com/), and [markdown](https://help.github.com/articles/markdown-basics/) via [marked](https://www.npmjs.com/package/marked).
 
 Squick aims to do one thing well: turn markdown files and dust templates into a stream
 of rendered HTML files. This lets users leverage any gulp plugin they want for

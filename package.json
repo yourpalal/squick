@@ -1,7 +1,7 @@
 {
   "name": "squick",
   "version": "0.0.0",
-  "description": "polymorphic static site generator",
+  "description": "dustjs + markdown for gulp",
   "main": "index.js",
   "scripts": {
     "test": "mocha tests/"
