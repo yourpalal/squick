@@ -5,9 +5,11 @@ import concat = require("concat-stream");
 import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
+import * as marked from "marked";
 import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
-import * as marked from "marked";
+import buffer = require("vinyl-buffer");
+
 
 class DustStream extends Readable {
   constructor(template: string, context: any) {
@@ -22,19 +24,12 @@ class DustStream extends Readable {
   _read() { /* nothing to do but wait */ }
 }
 
-function concatFile(f: File, cb: (f: File, s: string) => any) {
-    f.pipe(concat({encoding: "string"}, (content: string) => {
-      cb(f, content);
-    }));
-}
-
-
 class Post {
   meta: any;
   content: string;
 
-  constructor(public file: File, contents: string) {
-    this.parseContents(contents);
+  constructor(public file: File) {
+    this.parseContents(file.contents.toString());
   }
 
   name(): string {
@@ -77,7 +72,6 @@ interface SquickOptions {
 export = class Squick extends Readable {
   private posts: Post[] = [];
 
-  private postsRemaining = 0;
   private allPostsAvailable = false;
   private allTemplatesAvailable = false;
 
@@ -85,21 +79,22 @@ export = class Squick extends Readable {
       super({objectMode: true});
       this.setupDust();
 
-      options.content.on("data", (f: File) => {
-          this.postsRemaining++;
-          concatFile(f, (f, c) => this.addPost(f, c));
-      }).on("end", () => {
-        this.allPostsAvailable = true;
-        this.emit("posts-ended");
-        this.endIfFinished();
-      });
+      options.content
+        .pipe(buffer())
+        .on("data", (f: File) => this.addPost(f))
+        .on("end", () => {
+            this.allPostsAvailable = true;
+            this.emit("posts-ended");
+            this.endIfFinished();
+        });
 
-      options.views.on("data", (f: File) => {
-          concatFile(f, (f, c) => this.addTemplate(f, c));
-      }).on("end", () => {
-          this.allTemplatesAvailable = true;
-          this.emit("templates-ended");
-      });
+      options.views
+        .pipe(buffer())
+        .on("data", (f: File) => this.addTemplate(f))
+        .on("end", () => {
+            this.allTemplatesAvailable = true;
+            this.emit("templates-ended");
+        });
   }
 
   setupDust() {
@@ -149,24 +144,23 @@ export = class Squick extends Readable {
       });
   }
 
-  addPost(file: File, contents: string) {
-      let post = new Post(file, contents);
+  addPost(file: File) {
+      let post = new Post(file);
       this.posts.push(post);
       this.emit("post-available", post);
 
       this.push(this.renderPostForFile(post));
-      this.postsRemaining--;
       this.endIfFinished();
   }
 
   endIfFinished() {
-      if (this.postsRemaining == 0 && this.allPostsAvailable) {
+      if (this.allPostsAvailable) {
           this.push(null);
       }
   }
 
-  addTemplate(file: File, contents: string) {
-      dust.compileFn(contents, file.relative);
+  addTemplate(file: File) {
+      dust.compileFn(file.contents.toString(), file.relative);
       this.emit("template-available", file.relative);
   }
 
