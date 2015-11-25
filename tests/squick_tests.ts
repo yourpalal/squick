@@ -45,6 +45,12 @@ let simpleTemplate = new File({
   contents: new Buffer("page content: {post.content}")
 });
 
+let siteTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("site msg: {site.msg}")
+});
+
 let simpleContent = new File({
   base: "/b/c/",
   path: "/b/c/simple.md",
@@ -63,8 +69,9 @@ let partialIncluder = new File({
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
 
-function squickToFiles(posts: File[], templates: File[]): Promise<File[]> {
-    let result = new Squick(new Src(posts), new Src(templates))
+
+function squickToFiles(posts: File[], templates: File[], site={}): Promise<File[]> {
+    let result = new Squick({content: new Src(posts), views: new Src(templates), site: site})
         .pipe(buffer());
 
     return new Promise((resolve, reject) => {
@@ -107,4 +114,16 @@ describe("squick", () => {
             err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         }
     ));
+
+    it("passes arbitrary site info to templates", () =>
+        squickToFiles([simpleContent], [siteTemplate], {msg: "site info"})
+        .then((files => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "site msg: site info"
+            });
+        }))
+    );
 });

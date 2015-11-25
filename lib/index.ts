@@ -66,18 +66,26 @@ class Post {
   }
 }
 
+interface SquickOptions {
+    content: Readable;
+    views: Readable;
+    site?: any;
+}
+
 export = class Squick extends Readable {
+  private site: any;
   private posts: Post[] = [];
 
   private postsRemaining = 0;
   private allPostsAvailable = false;
   private allTemplatesAvailable = false;
 
-  constructor(content: Readable, views: Readable) {
+  constructor(options: SquickOptions) {
       super({objectMode: true});
+      this.site = options.site;
       this.setupDust();
 
-      content.on("data", (f: File) => {
+      options.content.on("data", (f: File) => {
           this.postsRemaining++;
           concatFile(f, (f, c) => this.addPost(f, c));
       }).on("end", () => {
@@ -86,7 +94,7 @@ export = class Squick extends Readable {
         this.endIfFinished();
       });
 
-      views.on("data", (f: File) => {
+      options.views.on("data", (f: File) => {
           concatFile(f, (f, c) => this.addTemplate(f, c));
       }).on("end", () => {
           this.allTemplatesAvailable = true;
@@ -184,6 +192,6 @@ export = class Squick extends Readable {
 
   startRender(post: Post, template: string = null): Readable {
       template = template || post.meta.template;
-      return new DustStream(template, {post: post});
+      return new DustStream(template, {post: post, site: this.site});
   }
 }

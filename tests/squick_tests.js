@@ -40,6 +40,11 @@ var simpleTemplate = new File({
     path: "/b/t/simple.html",
     contents: new Buffer("page content: {post.content}")
 });
+var siteTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("site msg: {site.msg}")
+});
 var simpleContent = new File({
     base: "/b/c/",
     path: "/b/c/simple.md",
@@ -55,8 +60,9 @@ var partialIncluder = new File({
     path: "b/t/simple.html",
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
-function squickToFiles(posts, templates) {
-    var result = new Squick(new Src(posts), new Src(templates))
+function squickToFiles(posts, templates, site) {
+    if (site === void 0) { site = {}; }
+    var result = new Squick({ content: new Src(posts), views: new Src(templates), site: site })
         .pipe(buffer());
     return new Promise(function (resolve, reject) {
         result.on("error", function (err) { return reject(err); });
@@ -93,5 +99,16 @@ describe("squick", function () {
         }, function (err) {
             err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         });
+    });
+    it("passes arbitrary site info to templates", function () {
+        return squickToFiles([simpleContent], [siteTemplate], { msg: "site info" })
+            .then((function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "site msg: site info"
+            });
+        }));
     });
 });
