@@ -30,7 +30,9 @@ The following configuration keys are recognized by Squick:
 
 * `content` a stream of markdown files, probably from gulp.src
 * `views` a stream of dustjs templates, probably from gulp.src
-* `site` an arbitrary object which will be passed to all templates as `site`
+* `site` (optional) an arbitrary object which will be passed to all templates as `site`
+* `filters` (optional) an object containing dust filters to be added to the dust environment.
+* `helpers` (optional) an object containing dust helpers to be added to the dust environment.
 
 ## front-matter
 
@@ -40,7 +42,8 @@ Each markdown file can have a JSON-formatted object at the start of the file whi
 
 ### Template Environment
 
-The templates are rendered via [dustjs](http://www.dustjs.com/docs/api/). In addition to the standard dust filters, Squick includes the [dustjs-helpers](http://www.dustjs.com/guides/dust-helpers/) and a few helpers and filters, listed below.
+The templates are rendered via [dustjs](http://www.dustjs.com/docs/api/). In addition to the standard dust filters, Squick includes the [dustjs-helpers](http://www.dustjs.com/guides/dust-helpers/) and a few helpers and filters, listed below. You can also add custom filters and helpers via the `filters`
+and `helpers` configuration key.
 
 #### helpers
 

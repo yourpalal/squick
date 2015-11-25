@@ -45,6 +45,16 @@ var conditionalTemplate = new File({
     path: "/b/t/simple.html",
     contents: new Buffer("{@eq key=post.name value=nope}YES{:else}NO{/eq}")
 });
+var customFilter = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{post.content|catify}")
+});
+var customHelper = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@meow /}")
+});
 var siteTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
@@ -65,9 +75,12 @@ var partialIncluder = new File({
     path: "b/t/simple.html",
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
-function squickToFiles(posts, templates, site) {
-    if (site === void 0) { site = {}; }
-    var result = new Squick({ content: new Src(posts), views: new Src(templates), site: site })
+function squickToFiles(posts, templates, opts) {
+    if (opts === void 0) { opts = {}; }
+    opts = opts || {};
+    opts.content = new Src(posts);
+    opts.views = new Src(templates);
+    var result = new Squick(opts)
         .pipe(buffer());
     return new Promise(function (resolve, reject) {
         result.on("error", function (err) { return reject(err); });
@@ -106,7 +119,9 @@ describe("squick", function () {
         });
     });
     it("passes arbitrary site info to templates", function () {
-        return squickToFiles([simpleContent], [siteTemplate], { msg: "site info" })
+        return squickToFiles([simpleContent], [siteTemplate], {
+            site: { msg: "site info" }
+        })
             .then((function (files) {
             files.should.have.length(1);
             files[0].should.be.vinylFile({
@@ -124,6 +139,37 @@ describe("squick", function () {
                 base: "/b/c/",
                 path: "/b/c/simple.html",
                 contents: "NO"
+            });
+        });
+    });
+    it("allows custom filters via an option", function () {
+        return squickToFiles([simpleContent], [customFilter], {
+            filters: {
+                "catify": function (x) { return ("meow " + x + " meow"); }
+            }
+        }).then(function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "meow  wow meow"
+            });
+        });
+    });
+    it("allows custom helpers via an option", function () {
+        return squickToFiles([simpleContent], [customHelper], {
+            helpers: {
+                "meow": function (chunk) {
+                    chunk.write("meow meow meow");
+                    return chunk;
+                }
+            }
+        }).then(function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "meow meow meow"
             });
         });
     });

@@ -70,19 +70,19 @@ interface SquickOptions {
     content: Readable;
     views: Readable;
     site?: any;
+    filters?: {[key: string]: (value: string) => string};
+    helpers?: {[key: string]: (chk: dust.Chunk, ctx: dust.Context, bodies?: any, params?: any) => any};
 }
 
 export = class Squick extends Readable {
-  private site: any;
   private posts: Post[] = [];
 
   private postsRemaining = 0;
   private allPostsAvailable = false;
   private allTemplatesAvailable = false;
 
-  constructor(options: SquickOptions) {
+  constructor(private options: SquickOptions) {
       super({objectMode: true});
-      this.site = options.site;
       this.setupDust();
 
       options.content.on("data", (f: File) => {
@@ -108,6 +108,20 @@ export = class Squick extends Readable {
           .then((template) => callback(null, template),
                 (err) => callback(err, null));
     };
+
+    // add custom filters
+    for (var key in this.options.filters) {
+        if (this.options.filters.hasOwnProperty(key)) {
+            dust.filters[key] = this.options.filters[key];
+        }
+    }
+
+    // add custom helpers
+    for (var key in this.options.helpers) {
+        if (this.options.helpers.hasOwnProperty(key)) {
+            dust.helpers[key] = this.options.helpers[key];
+        }
+    }
 
     dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
       return chunk.write(marked(params.content));
@@ -192,6 +206,6 @@ export = class Squick extends Readable {
 
   startRender(post: Post, template: string = null): Readable {
       template = template || post.meta.template;
-      return new DustStream(template, {post: post, site: this.site});
+      return new DustStream(template, {post: post, site: this.options.site});
   }
 }

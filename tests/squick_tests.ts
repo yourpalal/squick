@@ -1,7 +1,7 @@
 /// <reference path="../typings/tsd.d.ts"/>
 /// <reference path="./custom_assertions.d.ts"/>
 
-import Squick = require("../lib/index");
+import Squick  = require("../lib/index");
 
 import concat = require("concat-stream");
 import * as dust from "dustjs-linkedin";
@@ -51,6 +51,18 @@ let conditionalTemplate = new File({
     contents: new Buffer("{@eq key=post.name value=nope}YES{:else}NO{/eq}")
 });
 
+let customFilter = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{post.content|catify}")
+});
+
+let customHelper = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@meow /}")
+});
+
 let siteTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
@@ -76,8 +88,12 @@ let partialIncluder = new File({
 });
 
 
-function squickToFiles(posts: File[], templates: File[], site={}): Promise<File[]> {
-    let result = new Squick({content: new Src(posts), views: new Src(templates), site: site})
+function squickToFiles(posts: File[], templates: File[], opts: any={}): Promise<File[]> {
+    opts = opts || {};
+    opts.content = new Src(posts);
+    opts.views = new Src(templates);
+
+    let result = new Squick(opts)
         .pipe(buffer());
 
     return new Promise((resolve, reject) => {
@@ -122,7 +138,9 @@ describe("squick", () => {
     ));
 
     it("passes arbitrary site info to templates", () =>
-        squickToFiles([simpleContent], [siteTemplate], {msg: "site info"})
+        squickToFiles([simpleContent], [siteTemplate], {
+            site: {msg: "site info"}
+        })
         .then((files => {
             files.should.have.length(1);
             files[0].should.be.vinylFile({
@@ -141,6 +159,39 @@ describe("squick", () => {
                 base: "/b/c/",
                 path: "/b/c/simple.html",
                 contents: "NO"
+            });
+        })
+    );
+
+    it("allows custom filters via an option", () =>
+        squickToFiles([simpleContent], [customFilter], {
+            filters: {
+                "catify": (x) => `meow ${x} meow`
+            }
+        }).then((files) => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "meow  wow meow"
+            });
+        })
+    );
+
+    it("allows custom helpers via an option", () =>
+        squickToFiles([simpleContent], [customHelper], {
+            helpers: {
+                "meow": (chunk) => {
+                    chunk.write("meow meow meow");
+                    return chunk;
+                }
+            }
+        }).then((files) => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "meow meow meow"
             });
         })
     );
