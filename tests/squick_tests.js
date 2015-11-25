@@ -40,6 +40,11 @@ var simpleTemplate = new File({
     path: "/b/t/simple.html",
     contents: new Buffer("page content: {post.content}")
 });
+var conditionalTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@eq key=post.name value=nope}YES{:else}NO{/eq}")
+});
 var siteTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
@@ -110,5 +115,16 @@ describe("squick", function () {
                 contents: "site msg: site info"
             });
         }));
+    });
+    it("enables the standard dust helpers", function () {
+        return squickToFiles([simpleContent], [conditionalTemplate])
+            .then(function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "NO"
+            });
+        });
     });
 });

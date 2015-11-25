@@ -2,7 +2,7 @@
 /// <reference path="../typings/others.d.ts"/>
 
 import concat = require("concat-stream");
-import * as dust from "dustjs-linkedin";
+import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
 import {Readable, Transform, Writable} from "stream";

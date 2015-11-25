@@ -173,3 +173,8 @@ declare module "dustjs-linkedin" {
     export function onLoad(name: string, options, callback: (err, data) => void);
 
 }
+
+declare module "dustjs-helpers" {
+    import dust = require("dustjs-linkedin");
+    export = dust;
+}

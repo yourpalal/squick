@@ -40,9 +40,15 @@ class Src extends Readable {
 }
 
 let simpleTemplate = new File({
-  base: "/b/t/",
-  path: "/b/t/simple.html",
-  contents: new Buffer("page content: {post.content}")
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("page content: {post.content}")
+});
+
+let conditionalTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@eq key=post.name value=nope}YES{:else}NO{/eq}")
 });
 
 let siteTemplate = new File({
@@ -125,5 +131,17 @@ describe("squick", () => {
                 contents: "site msg: site info"
             });
         }))
+    );
+
+    it("enables the standard dust helpers", () =>
+        squickToFiles([simpleContent], [conditionalTemplate])
+        .then((files) => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "NO"
+            });
+        })
     );
 });
