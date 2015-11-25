@@ -12,194 +12,194 @@ import buffer = require("vinyl-buffer");
 
 
 class DustStream extends Readable {
-  constructor(template: string, context: any) {
-    super();
+    constructor(template: string, context: any) {
+        super();
 
-    dust.stream(template, context)
-      .on("data", (d) => { this.push(d); })
-      .on("end", () => { this.push(null); })
-      .on("error", (err) => { this.emit("error", err); });
-  }
+        dust.stream(template, context)
+            .on("data", (d) => { this.push(d); })
+            .on("end", () => { this.push(null); })
+            .on("error", (err) => { this.emit("error", err); });
+    }
 
-  _read() { /* nothing to do but wait */ }
+    _read() { /* nothing to do but wait */ }
 }
 
 class Post {
-  meta: any;
-  content: string;
+    meta: any;
+    content: string;
 
-  constructor(public file: File) {
-    this.parseContents(file.contents.toString());
-  }
-
-  name(): string {
-    return this.file.relative;
-  }
-
-  parseContents(source: string) {
-    if (source[0] != "{") {
-      this.meta = {};
-      this.content = source;
-      console.log("no front matter found in", this.file.path);
-      return;
+    constructor(public file: File) {
+        this.parseContents(file.contents.toString());
     }
 
-    let nested = 0;
-    for (let i = 0; i < source.length; i++) {
-      if (source[i] == "{") {
-        nested += 1;
-      } else if (source[i] == "}") {
-        nested -= 1;
-      }
-
-      if (nested == 0) {
-        this.content = source.substr(i + 1);
-        this.meta = JSON.parse(source.substr(0, i + 1));
-        break;
-      }
+    name(): string {
+        return this.file.relative;
     }
-  }
+
+    parseContents(source: string) {
+        if (source[0] != "{") {
+            this.meta = {};
+            this.content = source;
+            console.log("no front matter found in", this.file.path);
+            return;
+        }
+
+        let nested = 0;
+        for (let i = 0; i < source.length; i++) {
+            if (source[i] == "{") {
+                nested += 1;
+            } else if (source[i] == "}") {
+                nested -= 1;
+            }
+
+            if (nested == 0) {
+                this.content = source.substr(i + 1);
+                this.meta = JSON.parse(source.substr(0, i + 1));
+                break;
+            }
+        }
+    }
 }
 
 interface SquickOptions {
     content: Readable;
     views: Readable;
     site?: any;
-    filters?: {[key: string]: (value: string) => string};
-    helpers?: {[key: string]: (chk: dust.Chunk, ctx: dust.Context, bodies?: any, params?: any) => any};
+    filters?: { [key: string]: (value: string) => string };
+    helpers?: { [key: string]: (chk: dust.Chunk, ctx: dust.Context, bodies?: any, params?: any) => any };
 }
 
 export = class Squick extends Readable {
-  private posts: Post[] = [];
+    private posts: Post[] = [];
 
-  private allPostsAvailable = false;
-  private allTemplatesAvailable = false;
+    private allPostsAvailable = false;
+    private allTemplatesAvailable = false;
 
-  constructor(private options: SquickOptions) {
-      super({objectMode: true});
-      this.setupDust();
+    constructor(private options: SquickOptions) {
+        super({ objectMode: true });
+        this.setupDust();
 
-      options.content
-        .pipe(buffer())
-        .on("data", (f: File) => this.addPost(f))
-        .on("end", () => {
+        options.content
+            .pipe(buffer())
+            .on("data", (f: File) => this.addPost(f))
+            .on("end", () => {
             this.allPostsAvailable = true;
             this.emit("posts-ended");
             this.endIfFinished();
         });
 
-      options.views
-        .pipe(buffer())
-        .on("data", (f: File) => this.addTemplate(f))
-        .on("end", () => {
+        options.views
+            .pipe(buffer())
+            .on("data", (f: File) => this.addTemplate(f))
+            .on("end", () => {
             this.allTemplatesAvailable = true;
             this.emit("templates-ended");
         });
-  }
+    }
 
-  setupDust() {
-    dust.onLoad = (templateName: string, options, callback: Function) => {
-        return this.getTemplate(templateName)
-          .then((template) => callback(null, template),
+    setupDust() {
+        dust.onLoad = (templateName: string, options, callback: Function) => {
+            return this.getTemplate(templateName)
+                .then((template) => callback(null, template),
                 (err) => callback(err, null));
-    };
+        };
 
-    // add custom filters
-    for (var key in this.options.filters) {
-        if (this.options.filters.hasOwnProperty(key)) {
-            dust.filters[key] = this.options.filters[key];
-        }
-    }
-
-    // add custom helpers
-    for (var key in this.options.helpers) {
-        if (this.options.helpers.hasOwnProperty(key)) {
-            dust.helpers[key] = this.options.helpers[key];
-        }
-    }
-
-    dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
-      return chunk.write(marked(params.content));
-    };
-  }
-
-  _read() { /* nothing to do but wait */ }
-
-  getPost(name: string): Promise<Post> {
-      for (var post of this.posts) {
-        if (post.name() == name) {
-          return Promise.resolve(post);
-        }
-      }
-
-      return new Promise((resolve, reject) => {
-          let postAvailableListener = (post) => {
-            if (post.name() == name) {
-              resolve(post);
-              this.removeListener("post-available", postAvailableListener);
+        // add custom filters
+        for (var key in this.options.filters) {
+            if (this.options.filters.hasOwnProperty(key)) {
+                dust.filters[key] = this.options.filters[key];
             }
-          };
+        }
 
-          this.on("post-available", postAvailableListener);
-      });
-  }
+        // add custom helpers
+        for (var key in this.options.helpers) {
+            if (this.options.helpers.hasOwnProperty(key)) {
+                dust.helpers[key] = this.options.helpers[key];
+            }
+        }
 
-  addPost(file: File) {
-      let post = new Post(file);
-      this.posts.push(post);
-      this.emit("post-available", post);
+        dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
+            return chunk.write(marked(params.content));
+        };
+    }
 
-      this.push(this.renderPostForFile(post));
-      this.endIfFinished();
-  }
+    _read() { /* nothing to do but wait */ }
 
-  endIfFinished() {
-      if (this.allPostsAvailable) {
-          this.push(null);
-      }
-  }
+    getPost(name: string): Promise<Post> {
+        for (var post of this.posts) {
+            if (post.name() == name) {
+                return Promise.resolve(post);
+            }
+        }
 
-  addTemplate(file: File) {
-      dust.compileFn(file.contents.toString(), file.relative);
-      this.emit("template-available", file.relative);
-  }
+        return new Promise((resolve, reject) => {
+            let postAvailableListener = (post) => {
+                if (post.name() == name) {
+                    resolve(post);
+                    this.removeListener("post-available", postAvailableListener);
+                }
+            };
 
-  getTemplate(name: string): Promise<dust.Template> {
-      if (name in dust.cache) {
-          return Promise.resolve(dust.cache[name]);
-      }
+            this.on("post-available", postAvailableListener);
+        });
+    }
 
-      let errorMessage = `template ${name} not found`;
-      if (this.allTemplatesAvailable) {
-          return Promise.reject(errorMessage);
-      }
+    addPost(file: File) {
+        let post = new Post(file);
+        this.posts.push(post);
+        this.emit("post-available", post);
 
-      return new Promise((resolve, reject) => {
-          let onFinished = () => reject(`template ${name} not found`);
-          let onAvailable = (templateName) => {
-              if (templateName == name) {
-                resolve();
-                this.removeListener("template-available", onAvailable);
-              }
-          };
-          this.on("template-available", onAvailable);
-          this.on("templates-ended", onFinished);
-      });
-  }
+        this.push(this.renderPostForFile(post));
+        this.endIfFinished();
+    }
 
-  renderPostForFile(post: Post): File {
-      let result = new File({
-          base: post.file.base,
-          path: post.file.path,
-          contents: this.startRender(post)
-      });
+    endIfFinished() {
+        if (this.allPostsAvailable) {
+            this.push(null);
+        }
+    }
 
-      result.extname = ".html";
-      return result;
-  }
+    addTemplate(file: File) {
+        dust.compileFn(file.contents.toString(), file.relative);
+        this.emit("template-available", file.relative);
+    }
 
-  startRender(post: Post, template: string = null): Readable {
-      template = template || post.meta.template;
-      return new DustStream(template, {post: post, site: this.options.site});
-  }
+    getTemplate(name: string): Promise<dust.Template> {
+        if (name in dust.cache) {
+            return Promise.resolve(dust.cache[name]);
+        }
+
+        let errorMessage = `template ${name} not found`;
+        if (this.allTemplatesAvailable) {
+            return Promise.reject(errorMessage);
+        }
+
+        return new Promise((resolve, reject) => {
+            let onFinished = () => reject(`template ${name} not found`);
+            let onAvailable = (templateName) => {
+                if (templateName == name) {
+                    resolve();
+                    this.removeListener("template-available", onAvailable);
+                }
+            };
+            this.on("template-available", onAvailable);
+            this.on("templates-ended", onFinished);
+        });
+    }
+
+    renderPostForFile(post: Post): File {
+        let result = new File({
+            base: post.file.base,
+            path: post.file.path,
+            contents: this.startRender(post)
+        });
+
+        result.extname = ".html";
+        return result;
+    }
+
+    startRender(post: Post, template: string = null): Readable {
+        template = template || post.meta.template;
+        return new DustStream(template, { post: post, site: this.options.site });
+    }
 }
