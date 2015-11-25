@@ -1,7 +1,6 @@
 /// <reference path="../typings/tsd.d.ts"/>
 /// <reference path="../typings/others.d.ts"/>
 
-import concat = require("concat-stream");
 import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
