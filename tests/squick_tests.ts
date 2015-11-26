@@ -45,6 +45,12 @@ let simpleTemplate = new File({
     contents: new Buffer("page content: {post.content}")
 });
 
+let badTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{% wow %}")
+});
+
 let conditionalTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
@@ -67,6 +73,12 @@ let siteTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
     contents: new Buffer("site msg: {site.msg}")
+});
+
+let badJSON = new File({
+  base: "/b/c/",
+  path: "/b/c/bad.md",
+  contents: new Buffer(`\{nope00----\} wow`)
 });
 
 let simpleContent = new File({
@@ -93,12 +105,17 @@ function squickToFiles(posts: File[], templates: File[], opts: any={}): Promise<
     opts.content = new Src(posts);
     opts.views = new Src(templates);
 
-    let result = new Squick(opts)
-        .pipe(buffer());
+    let result = new Squick(opts);
 
     return new Promise((resolve, reject) => {
+        // catch squick errors
         result.on("error", (err) => reject(err));
-        result.pipe(concat((files: File[]) => resolve(files)));
+
+        // catch individual filer errors
+        let buffered = result.pipe(buffer());
+        buffered.on("error", (err) => reject(err));
+
+        buffered.pipe(concat((files: File[]) => resolve(files)));
     });
 }
 
@@ -126,14 +143,6 @@ describe("squick", () => {
                 path: "/b/c/simple.html",
                 contents: new Buffer("cool partial, bro")
             });
-        }
-    ));
-
-    it("raises an error when a template is missing", () =>
-        squickToFiles([simpleContent], []).then((files) => {
-            return Promise.reject("did not produce error message");
-        }, (err) => {
-            err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         }
     ));
 
@@ -193,6 +202,31 @@ describe("squick", () => {
                 path: "/b/c/simple.html",
                 contents: "meow meow meow"
             });
+        })
+    );
+
+    it("catches JSON syntax errors", () =>
+        squickToFiles([badJSON], [simpleTemplate], {})
+        .then(()  => {
+            Promise.reject("did not produce error message");
+        }, (err) => {
+            err.toString().indexOf("bad.md").should.be.greaterThanOrEqual(0);
+        })
+    );
+
+    it("raises an error when a template is missing", () =>
+        squickToFiles([simpleContent], []).then((files) => {
+            return Promise.reject("did not produce error message");
+        }, (err) => {
+            err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
+        })
+    );
+
+    it("raises an error when a template doesn't compile", () =>
+        squickToFiles([simpleContent], [badTemplate]).then((files) => {
+            return Promise.reject("did not produce error message");
+        }, (err) => {
+            err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
         })
     );
 });

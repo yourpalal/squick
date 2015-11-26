@@ -5,7 +5,9 @@
   "main": "./lib/index.js",
   "homepage": "https://github.com/yourpalal/squick",
   "repository": "git://github.com/yourpalal/squick.git",
-  "bugs": {"url": "https://github.com/yourpalal/squick/issues"},
+  "bugs": {
+    "url": "https://github.com/yourpalal/squick/issues"
+  },
   "scripts": {
     "test": "mocha tests/"
   },
@@ -22,6 +24,7 @@
   "dependencies": {
     "dustjs-helpers": "^1.7.3",
     "dustjs-linkedin": "^2.7.2",
+    "gulp-util": "^3.0.7",
     "marked": "^0.3.5",
     "vinyl": "^1.1.0",
     "vinyl-buffer": "^1.0.0"

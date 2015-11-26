@@ -40,6 +40,11 @@ var simpleTemplate = new File({
     path: "/b/t/simple.html",
     contents: new Buffer("page content: {post.content}")
 });
+var badTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{% wow %}")
+});
 var conditionalTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
@@ -59,6 +64,11 @@ var siteTemplate = new File({
     base: "/b/t/",
     path: "/b/t/simple.html",
     contents: new Buffer("site msg: {site.msg}")
+});
+var badJSON = new File({
+    base: "/b/c/",
+    path: "/b/c/bad.md",
+    contents: new Buffer("{nope00----} wow")
 });
 var simpleContent = new File({
     base: "/b/c/",
@@ -80,11 +90,12 @@ function squickToFiles(posts, templates, opts) {
     opts = opts || {};
     opts.content = new Src(posts);
     opts.views = new Src(templates);
-    var result = new Squick(opts)
-        .pipe(buffer());
+    var result = new Squick(opts);
     return new Promise(function (resolve, reject) {
         result.on("error", function (err) { return reject(err); });
-        result.pipe(concat(function (files) { return resolve(files); }));
+        var buffered = result.pipe(buffer());
+        buffered.on("error", function (err) { return reject(err); });
+        buffered.pipe(concat(function (files) { return resolve(files); }));
     });
 }
 describe("squick", function () {
@@ -109,13 +120,6 @@ describe("squick", function () {
                 path: "/b/c/simple.html",
                 contents: new Buffer("cool partial, bro")
             });
-        });
-    });
-    it("raises an error when a template is missing", function () {
-        return squickToFiles([simpleContent], []).then(function (files) {
-            return Promise.reject("did not produce error message");
-        }, function (err) {
-            err.indexOf("simple.html").should.be.greaterThanOrEqual(0);
         });
     });
     it("passes arbitrary site info to templates", function () {
@@ -171,6 +175,28 @@ describe("squick", function () {
                 path: "/b/c/simple.html",
                 contents: "meow meow meow"
             });
+        });
+    });
+    it("catches JSON syntax errors", function () {
+        return squickToFiles([badJSON], [simpleTemplate], {})
+            .then(function () {
+            Promise.reject("did not produce error message");
+        }, function (err) {
+            err.toString().indexOf("bad.md").should.be.greaterThanOrEqual(0);
+        });
+    });
+    it("raises an error when a template is missing", function () {
+        return squickToFiles([simpleContent], []).then(function (files) {
+            return Promise.reject("did not produce error message");
+        }, function (err) {
+            err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
+        });
+    });
+    it("raises an error when a template doesn't compile", function () {
+        return squickToFiles([simpleContent], [badTemplate]).then(function (files) {
+            return Promise.reject("did not produce error message");
+        }, function (err) {
+            err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
         });
     });
 });

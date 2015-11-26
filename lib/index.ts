@@ -5,19 +5,25 @@ import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
 import * as marked from "marked";
+import gutil = require("gulp-util");
 import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
 import buffer = require("vinyl-buffer");
 
 
 class DustStream extends Readable {
-    constructor(template: string, context: any) {
+    constructor(template: string, context: any, name: string) {
         super();
 
         dust.stream(template, context)
             .on("data", (d) => { this.push(d); })
             .on("end", () => { this.push(null); })
-            .on("error", (err) => { this.emit("error", err); });
+            .on("error", (err) => {
+                this.emit("error", new gutil.PluginError({
+                    plugin: "squick",
+                    message: `Error while rendering ${name} with ${template}:\n\t${err}`
+                }));
+            });
     }
 
     _read() { /* nothing to do but wait */ }
@@ -87,25 +93,25 @@ export = class Squick extends Readable {
             .pipe(buffer())
             .on("data", (f: File) => this.addPost(f))
             .on("end", () => {
-            this.allPostsAvailable = true;
-            this.emit("posts-ended");
-            this.endIfFinished();
-        });
+                this.allPostsAvailable = true;
+                this.emit("posts-ended");
+                this.endIfFinished();
+            });
 
         options.views
             .pipe(buffer())
             .on("data", (f: File) => this.addTemplate(f))
             .on("end", () => {
-            this.allTemplatesAvailable = true;
-            this.emit("templates-ended");
-        });
+                this.allTemplatesAvailable = true;
+                this.emit("templates-ended");
+            });
     }
 
     setupDust() {
         dust.onLoad = (templateName: string, options, callback: Function) => {
             return this.getTemplate(templateName)
                 .then((template) => callback(null, template),
-                (err) => callback(err, null));
+                    (err) => callback(err, null));
         };
 
         // add custom filters
@@ -149,7 +155,15 @@ export = class Squick extends Readable {
     }
 
     addPost(file: File) {
-        let post = new Post(file);
+        try {
+            var post = new Post(file);
+        } catch(e) {
+            this.emit("error", new gutil.PluginError({
+                plugin: "Squick",
+                message: `JSON Syntax error in ${file.path}:\n\t${e.toString()}`
+            }));
+            return;
+        }
         this.posts.push(post);
         this.emit("post-available", post);
 
@@ -164,8 +178,15 @@ export = class Squick extends Readable {
     }
 
     addTemplate(file: File) {
-        dust.compileFn(file.contents.toString(), file.relative);
-        this.emit("template-available", file.relative);
+        try {
+            dust.compileFn(file.contents.toString(), file.relative);
+            this.emit("template-available", file.relative);
+        } catch (err) {
+            this.emit("error", new gutil.PluginError({
+                plugin: "squick",
+                message: `compilation of template (${file.relative}) failed with error:\n\t${err.toString()}`
+            }));
+        }
     }
 
     getTemplate(name: string): Promise<dust.Template> {
@@ -204,6 +225,6 @@ export = class Squick extends Readable {
 
     startRender(post: Post, template: string = null): Readable {
         template = template || post.meta.template;
-        return new DustStream(template, { post: post, site: this.options.site });
+        return new DustStream(template, { post: post, site: this.options.site }, post.name());
     }
 }

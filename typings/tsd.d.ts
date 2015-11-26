@@ -8,3 +8,4 @@
 /// <reference path="should/should.d.ts" />
 /// <reference path="mocha/mocha.d.ts" />
 /// <reference path="vinyl-buffer/vinyl-buffer.d.ts" />
+/// <reference path="gulp-util/gulp-util.d.ts" />
