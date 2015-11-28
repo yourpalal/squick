@@ -79,6 +79,11 @@ declare module "dustjs-linkedin" {
         * Returns the head of the context stack.
         */
         current(): any;
+
+        /**
+         * Clones the context object
+         */
+         clone(): Context;
     }
 
     export interface Stream {

@@ -12,7 +12,7 @@ import buffer = require("vinyl-buffer");
 
 
 class DustStream extends Readable {
-    constructor(template: string, context: any, name: string) {
+    constructor(template: string, context: dust.Context, name: string) {
         super();
 
         dust.stream(template, context)
@@ -80,6 +80,7 @@ export = class Squick extends Readable {
 
     private allPostsAvailable = false;
     private allTemplatesAvailable = false;
+    private baseContext: dust.Context;
 
     constructor(private options: SquickOptions) {
         super({ objectMode: true });
@@ -108,6 +109,7 @@ export = class Squick extends Readable {
     }
 
     setupDust() {
+        this.baseContext = dust.makeBase({site: this.options.site || {}});
         dust.onLoad = (templateName: string, options, callback: Function) => {
             return this.getTemplate(templateName)
                 .then((template) => callback(null, template),
@@ -128,11 +130,11 @@ export = class Squick extends Readable {
             }
         }
 
-        dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
+        dust.helpers["markdown"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
             return chunk.write(marked(params.content));
         };
 
-        dust.helpers["fetch"] = (chunk: dust.Chunk, context, bodies, params) => {
+        dust.helpers["fetch"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
             let key = params["as"];
             let paths = params["paths"];
             let body = bodies.block;
@@ -258,6 +260,7 @@ export = class Squick extends Readable {
 
     startRender(post: Post, template: string = null): Readable {
         template = template || post.meta.template;
-        return new DustStream(template, { post: post, site: this.options.site }, post.name());
+        let context = this.baseContext.clone().push({post: post});
+        return new DustStream(template, context, post.name());
     }
 }
