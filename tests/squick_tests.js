@@ -75,6 +75,16 @@ var simpleContent = new File({
     path: "/b/c/simple.md",
     contents: new Buffer("{\"template\": \"simple.html\"} wow")
 });
+var includerContent = new File({
+    base: "/b/c/",
+    path: "/b/c/lots.md",
+    contents: new Buffer("{\"template\": \"fetch.html\", \"include\": [\"simple.md\"] }neat")
+});
+var includerTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/fetch.html",
+    contents: new Buffer("{post.content}{@fetch paths=post.meta.include as=\"article\"}{article.content}{/fetch}")
+});
 var partial = new File({
     base: "b/t/",
     path: "b/t/partial.html",
@@ -132,6 +142,17 @@ describe("squick", function () {
                 base: "/b/c/",
                 path: "/b/c/simple.html",
                 contents: "site msg: site info"
+            });
+        }));
+    });
+    it("adds a helper named @fetch which loops through posts by name", function () {
+        return squickToFiles([simpleContent, includerContent], [simpleTemplate, includerTemplate])
+            .then((function (files) {
+            files.should.have.length(2);
+            files[1].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/lots.html",
+                contents: "neat wow"
             });
         }));
     });
@@ -197,6 +218,13 @@ describe("squick", function () {
             return Promise.reject("did not produce error message");
         }, function (err) {
             err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
+        });
+    });
+    it("raises an error when a post is missing", function () {
+        return squickToFiles([includerContent], [includerTemplate]).then(function (files) {
+            return Promise.reject("did not produce error message");
+        }, function (err) {
+            err.toString().indexOf("simple.md").should.be.greaterThanOrEqual(0);
         });
     });
 });

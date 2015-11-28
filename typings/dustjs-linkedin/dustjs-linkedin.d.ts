@@ -31,7 +31,7 @@ declare module "dustjs-linkedin" {
         /**
         * Writes data to this chunk's buffer and marks it as flushable. This method must be called on any chunks created via chunk.map. Do not call this method on a handler's main chunk -- dust.render and dust.stream take care of this for you.
         */
-        end(data: string): Chunk;
+        end(data?: string): Chunk;
 
         /**
         * Creates a new chunk and passes it to callback. Use map to wrap asynchronous functions and to partition the template for streaming.

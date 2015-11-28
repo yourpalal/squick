@@ -87,6 +87,18 @@ let simpleContent = new File({
   contents: new Buffer(`\{"template": "simple.html"\} wow`)
 });
 
+let includerContent = new File({
+    base: "/b/c/",
+    path: "/b/c/lots.md",
+    contents: new Buffer(`\{"template": "fetch.html", "include": ["simple.md"] \}neat`)
+});
+
+let includerTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/fetch.html",
+    contents: new Buffer("{post.content}{@fetch paths=post.meta.include as=\"article\"}{article.content}{/fetch}")
+});
+
 let partial = new File({
     base: "b/t/",
     path: "b/t/partial.html",
@@ -160,6 +172,18 @@ describe("squick", () => {
         }))
     );
 
+    it("adds a helper named @fetch which loops through posts by name", () =>
+        squickToFiles([simpleContent, includerContent], [simpleTemplate, includerTemplate])
+        .then((files => {
+            files.should.have.length(2);
+            files[1].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/lots.html",
+                contents: "neat wow"
+            });
+        }))
+    );
+
     it("enables the standard dust helpers", () =>
         squickToFiles([simpleContent], [conditionalTemplate])
         .then((files) => {
@@ -227,6 +251,14 @@ describe("squick", () => {
             return Promise.reject("did not produce error message");
         }, (err) => {
             err.toString().indexOf("simple.html").should.be.greaterThanOrEqual(0);
+        })
+    );
+
+    it("raises an error when a post is missing", () =>
+        squickToFiles([includerContent], [includerTemplate]).then((files) => {
+            return Promise.reject("did not produce error message");
+        }, (err) => {
+            err.toString().indexOf("simple.md").should.be.greaterThanOrEqual(0);
         })
     );
 });

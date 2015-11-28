@@ -131,6 +131,26 @@ export = class Squick extends Readable {
         dust.helpers["markdown"] = (chunk: dust.Chunk, context, bodies, params) => {
             return chunk.write(marked(params.content));
         };
+
+        dust.helpers["fetch"] = (chunk: dust.Chunk, context, bodies, params) => {
+            let key = params["as"];
+            let paths = params["paths"];
+            let body = bodies.block;
+
+            return chunk.map((child) => {
+                let chunks = paths.map((path) =>
+                    this.getPost(path).then((post) => {
+                        let data = {};
+                        data[key] = post;
+                        child.render(body, context.clone().push(data)).end();
+                    }, (err) => {
+                        child.setError(err);
+                    })
+                );
+
+                Promise.all(chunks).then(() => child.end());
+            });
+        };
     }
 
     _read() { /* nothing to do but wait */ }
@@ -142,15 +162,22 @@ export = class Squick extends Readable {
             }
         }
 
+        let error = `cannot find post ${name}`;
+
+        if (this.allPostsAvailable) {
+            return Promise.reject(error);
+        }
+
         return new Promise((resolve, reject) => {
-            let postAvailableListener = (post) => {
+            let available = (post) => {
                 if (post.name() == name) {
                     resolve(post);
-                    this.removeListener("post-available", postAvailableListener);
+                    this.removeListener("post-available", available);
                 }
             };
 
-            this.on("post-available", postAvailableListener);
+            this.on("post-available", available);
+            this.on("posts-ended", () => reject(error));
         });
     }
 

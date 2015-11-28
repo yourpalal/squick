@@ -50,4 +50,10 @@ and `helpers` configuration key.
 
 #### helpers
 
-* `@markdown` takes a string and converts it from markdown to HTML. Often useful as `{@markdown post.content /}`.
+* `@markdown` takes a string and converts it from markdown to HTML. Often useful as `{@markdown content=post.content /}`.
+* `@fetch` takes a list of filenames and renders a block for each file. Useful for making an index page.
+
+      {@fetch paths=post.meta.include as="article"}
+        <h1>{article.meta.title}</h1>
+        {article.content}
+      {/fetch}
