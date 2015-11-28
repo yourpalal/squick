@@ -138,17 +138,23 @@ export = class Squick extends Readable {
             let body = bodies.block;
 
             return chunk.map((child) => {
-                let chunks = paths.map((path) =>
-                    this.getPost(path).then((post) => {
+                // we render each post sequentially and async
+                let next = (i: number) => {
+                    if(i == paths.length) {
+                        return chunk.end();
+                    }
+
+                    this.getPost(paths[i]).then((post) => {
                         let data = {};
                         data[key] = post;
                         child.render(body, context.clone().push(data)).end();
+                        next(i + 1);
                     }, (err) => {
                         child.setError(err);
-                    })
-                );
+                    });
+                };
 
-                Promise.all(chunks).then(() => child.end());
+                next(0);
             });
         };
     }
