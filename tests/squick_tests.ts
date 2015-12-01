@@ -123,7 +123,7 @@ function squickToFiles(posts: File[], templates: File[], opts: any={}): Promise<
         // catch squick errors
         result.on("error", (err) => reject(err));
 
-        // catch individual filer errors
+        // catch individual file errors
         let buffered = result.pipe(buffer());
         buffered.on("error", (err) => reject(err));
 

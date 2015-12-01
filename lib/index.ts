@@ -21,6 +21,7 @@ class DustStream extends Readable {
             .on("error", (err) => {
                 this.emit("error", new gutil.PluginError({
                     plugin: "squick",
+                    showProperties: false,
                     message: `Error while rendering ${name} with ${template}:\n\t${err}`
                 }));
             });
@@ -261,6 +262,8 @@ export = class Squick extends Readable {
     startRender(post: Post, template: string = null): Readable {
         template = template || post.meta.template;
         let context = this.baseContext.clone().push({post: post});
-        return new DustStream(template, context, post.name());
+        let stream = new DustStream(template, context, post.name());
+        stream.once("error", (err) => this.emit("error", err));
+        return stream;
     }
 }
