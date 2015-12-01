@@ -144,13 +144,13 @@ export = class Squick extends Readable {
                 // we render each post sequentially and async
                 let next = (i: number) => {
                     if(i == paths.length) {
-                        return chunk.end();
+                        return child.end();
                     }
 
                     this.getPost(paths[i]).then((post) => {
                         let data = {};
                         data[key] = post;
-                        child.render(body, context.clone().push(data)).end();
+                        child.render(body, context.clone().push(data));
                         next(i + 1);
                     }, (err) => {
                         child.setError(err);

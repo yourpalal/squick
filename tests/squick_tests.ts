@@ -90,7 +90,7 @@ let simpleContent = new File({
 let includerContent = new File({
     base: "/b/c/",
     path: "/b/c/lots.md",
-    contents: new Buffer(`\{"template": "fetch.html", "include": ["simple.md"] \}neat`)
+    contents: new Buffer(`\{"template": "fetch.html", "include": ["simple.md", "simple.md"] \}neat`)
 });
 
 let includerTemplate = new File({
@@ -179,7 +179,7 @@ describe("squick", () => {
             files[1].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/lots.html",
-                contents: "neat wow"
+                contents: "neat wow wow"
             });
         }))
     );

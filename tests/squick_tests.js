@@ -78,7 +78,7 @@ var simpleContent = new File({
 var includerContent = new File({
     base: "/b/c/",
     path: "/b/c/lots.md",
-    contents: new Buffer("{\"template\": \"fetch.html\", \"include\": [\"simple.md\"] }neat")
+    contents: new Buffer("{\"template\": \"fetch.html\", \"include\": [\"simple.md\", \"simple.md\"] }neat")
 });
 var includerTemplate = new File({
     base: "/b/t/",
@@ -152,7 +152,7 @@ describe("squick", function () {
             files[1].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/lots.html",
-                contents: "neat wow"
+                contents: "neat wow wow"
             });
         }));
     });
