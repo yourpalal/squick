@@ -16,7 +16,9 @@ class DustStream extends Readable {
         super();
 
         dust.stream(template, context)
-            .on("data", (d) => { this.push(d); })
+            .on("data", (d) => {
+                this.push(d);
+            })
             .on("end", () => { this.push(null); })
             .on("error", (err) => {
                 this.emit("error", new gutil.PluginError({
@@ -132,32 +134,33 @@ export = class Squick extends Readable {
         }
 
         dust.helpers["markdown"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
-            return chunk.write(marked(params.content));
+            return chunk.write(marked(params.content || ""));
         };
 
         dust.helpers["fetch"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
-            let key = params["as"];
-            let paths = params["paths"];
-            let body = bodies.block;
+            let key = params["as"] || "post";
+            let paths = params["paths"] || [];
 
-            return chunk.map((child) => {
-                // we render each post sequentially and async
-                let next = (i: number) => {
-                    if(i == paths.length) {
-                        return child.end();
-                    }
-
-                    this.getPost(paths[i]).then((post) => {
+            return chunk.map((chunk) => {
+                // get all posts
+                Promise.all(paths.map((path) =>
+                    this.getPost(path).then((post) => {
                         let data = {};
                         data[key] = post;
-                        child.render(body, context.clone().push(data));
-                        next(i + 1);
-                    }, (err) => {
-                        child.setError(err);
-                    });
-                };
+                        return data;
+                    })
+                )).then((posts) => {
+                    // render body once per post
+                    for (var post of posts) {
+                        chunk = bodies.block(chunk, context.clone().push(post));
+                    }
+                    chunk.end();
+                }).catch((err) => {
+                    // propagate any errors in fetching the posts
+                    chunk.setError(err);
+                });
 
-                next(0);
+                return chunk;
             });
         };
     }
@@ -186,7 +189,7 @@ export = class Squick extends Readable {
             };
 
             this.on("post-available", available);
-            this.on("posts-ended", () => reject(error));
+            this.once("posts-ended", () => reject(error));
         });
     }
 
@@ -263,7 +266,7 @@ export = class Squick extends Readable {
         template = template || post.meta.template;
         let context = this.baseContext.clone().push({post: post});
         let stream = new DustStream(template, context, post.name());
-        stream.once("error", (err) => this.emit("error", err));
+        stream.on("error", (err) => {this.emit("error", err);});
         return stream;
     }
 }
