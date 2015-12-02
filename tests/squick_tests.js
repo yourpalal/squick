@@ -95,18 +95,21 @@ var partialIncluder = new File({
     path: "b/t/simple.html",
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
-function squickToFiles(posts, templates, opts) {
-    if (opts === void 0) { opts = {}; }
-    opts = opts || {};
-    opts.content = new Src(posts);
-    opts.views = new Src(templates);
-    var result = new Squick(opts);
+function streamToPromise(s) {
     return new Promise(function (resolve, reject) {
-        result.on("error", function (err) { return reject(err); });
-        var buffered = result.pipe(buffer());
+        s.on("error", function (err) { return reject(err); });
+        var buffered = s.pipe(buffer());
         buffered.on("error", function (err) { return reject(err); });
         buffered.pipe(concat(function (files) { return resolve(files); }));
     });
+}
+function squickToFiles(posts, templates, opts) {
+    if (opts === void 0) { opts = {}; }
+    opts = opts || {};
+    opts.views = new Src(templates);
+    var result = new Src(posts)
+        .pipe(new Squick(opts));
+    return streamToPromise(result);
 }
 describe("squick", function () {
     beforeEach(function () {
@@ -114,6 +117,19 @@ describe("squick", function () {
     });
     it("renders files via templates", function () {
         return squickToFiles([simpleContent], [simpleTemplate]).then(function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: new Buffer("page content:  wow")
+            });
+        });
+    });
+    it("can take the content stream as an option", function () {
+        return streamToPromise(new Squick({
+            content: new Src([simpleContent]),
+            views: new Src([simpleTemplate])
+        })).then(function (files) {
             files.should.have.length(1);
             files[0].should.be.vinylFile({
                 base: "/b/c/",

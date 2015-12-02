@@ -23,6 +23,7 @@
         "lib/index.ts",
         "tests/custom_assertions.d.ts",
         "tests/squick_tests.ts",
+        "typings/bl/bl.d.ts",
         "typings/chalk/chalk.d.ts",
         "typings/dustjs-linkedin/dustjs-linkedin.d.ts",
         "typings/es6-promise/es6-promise.d.ts",

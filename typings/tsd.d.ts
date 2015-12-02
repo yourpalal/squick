@@ -9,3 +9,4 @@
 /// <reference path="mocha/mocha.d.ts" />
 /// <reference path="vinyl-buffer/vinyl-buffer.d.ts" />
 /// <reference path="gulp-util/gulp-util.d.ts" />
+/// <reference path="bl/bl.d.ts" />

@@ -1,6 +1,7 @@
 /// <reference path="../typings/tsd.d.ts"/>
 /// <reference path="../typings/others.d.ts"/>
 
+import bl = require("bl");
 import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
@@ -8,7 +9,6 @@ import * as marked from "marked";
 import gutil = require("gulp-util");
 import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
-import buffer = require("vinyl-buffer");
 
 
 class DustStream extends Readable {
@@ -70,15 +70,15 @@ class Post {
 }
 
 interface SquickOptions {
-    content: Readable;
     views: Readable;
+    content?: Readable;
     site?: any;
     filters?: { [key: string]: (value: string) => string };
     helpers?: { [key: string]: (chk: dust.Chunk, ctx: dust.Context, bodies?: any, params?: any) => any };
     marked?: any;
 }
 
-export = class Squick extends Readable {
+export = class Squick extends Transform {
     private posts: Post[] = [];
 
     private allPostsAvailable = false;
@@ -93,22 +93,47 @@ export = class Squick extends Readable {
 
         this.setupDust();
 
-        options.content
-            .pipe(buffer())
-            .on("data", (f: File) => this.addPost(f))
-            .on("end", () => {
-                this.allPostsAvailable = true;
-                this.emit("posts-ended");
-                this.endIfFinished();
-            });
+        if ("content" in options) {
+            options.content.pipe(this);
+        }
+
+        this.on("finish", () => this.emit("posts-ended"));
 
         options.views
-            .pipe(buffer())
-            .on("data", (f: File) => this.addTemplate(f))
+            .on("data", (f: File) => {
+                if (f.isBuffer()) {
+                    return this.addTemplate(f);
+                }
+
+                (f.contents as Readable).pipe(new bl((err, data: Buffer) => {
+                    if (err) {
+                        return this.emit("error", err);
+                    }
+
+                    f.contents = data;
+                    this.addTemplate(f);
+                }));
+            })
             .on("end", () => {
                 this.allTemplatesAvailable = true;
                 this.emit("templates-ended");
             });
+    }
+
+    _transform(f: File, ignored, cb) {
+        if (f.isBuffer()) {
+            return cb(null, this.addPost(f));
+        }
+
+        (f.contents as Readable).pipe(new bl((err, data: Buffer) => {
+            if (err) {
+                return cb(err, null);
+            }
+
+            f = f.clone();
+            f.contents = data;
+            cb(null, this.addPost(f));
+        }));
     }
 
     setupDust() {
@@ -165,8 +190,6 @@ export = class Squick extends Readable {
         };
     }
 
-    _read() { /* nothing to do but wait */ }
-
     getPost(name: string): Promise<Post> {
         for (var post of this.posts) {
             if (post.name() == name) {
@@ -193,7 +216,7 @@ export = class Squick extends Readable {
         });
     }
 
-    addPost(file: File) {
+    addPost(file: File): File {
         try {
             var post = new Post(file);
         } catch(e) {
@@ -206,8 +229,7 @@ export = class Squick extends Readable {
         this.posts.push(post);
         this.emit("post-available", post);
 
-        this.push(this.renderPostForFile(post));
-        this.endIfFinished();
+        return this.renderPostForFile(post);
     }
 
     endIfFinished() {

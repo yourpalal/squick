@@ -5,7 +5,7 @@ import Squick  = require("../lib/index");
 
 import concat = require("concat-stream");
 import * as dust from "dustjs-linkedin";
-import {Readable, Transform} from "stream";
+import {Readable, Stream, Transform} from "stream";
 import File = require("vinyl");
 import buffer = require("vinyl-buffer");
 
@@ -112,23 +112,26 @@ let partialIncluder = new File({
 });
 
 
-function squickToFiles(posts: File[], templates: File[], opts: any={}): Promise<File[]> {
-    opts = opts || {};
-    opts.content = new Src(posts);
-    opts.views = new Src(templates);
-
-    let result = new Squick(opts);
-
+function streamToPromise(s: Stream): Promise<File[]> {
     return new Promise((resolve, reject) => {
         // catch squick errors
-        result.on("error", (err) => reject(err));
+        s.on("error", (err) => reject(err));
 
         // catch individual file errors
-        let buffered = result.pipe(buffer());
+        let buffered = s.pipe(buffer());
         buffered.on("error", (err) => reject(err));
 
         buffered.pipe(concat((files: File[]) => resolve(files)));
     });
+}
+
+function squickToFiles(posts: File[], templates: File[], opts: any={}): Promise<File[]> {
+    opts = opts || {};
+    opts.views = new Src(templates);
+
+    let result = new Src(posts)
+        .pipe(new Squick(opts));
+    return streamToPromise(result);
 }
 
 describe("squick", () => {
@@ -146,6 +149,20 @@ describe("squick", () => {
             });
         }
     ));
+
+    it("can take the content stream as an option", () =>
+        streamToPromise(new Squick({
+            content: new Src([simpleContent]),
+            views: new Src([simpleTemplate])
+        })).then((files) => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: new Buffer("page content:  wow")
+            });
+        })
+    );
 
     it("can include partials", () =>
         squickToFiles([simpleContent], [partial, partialIncluder]).then((files) => {
