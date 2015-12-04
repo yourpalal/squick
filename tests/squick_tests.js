@@ -95,6 +95,11 @@ var partialIncluder = new File({
     path: "b/t/simple.html",
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
+var postsCountTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@postsCount /}")
+});
 function streamToPromise(s) {
     return new Promise(function (resolve, reject) {
         s.on("error", function (err) { return reject(err); });
@@ -241,6 +246,22 @@ describe("squick", function () {
             return Promise.reject("did not produce error message");
         }, function (err) {
             err.toString().indexOf("simple.md").should.be.greaterThanOrEqual(0);
+        });
+    });
+    it("adds a all_posts Promise to the context options", function () {
+        return squickToFiles([simpleContent], [postsCountTemplate], {
+            helpers: {
+                "postsCount": function (chunk, context) {
+                    return context.options.all_posts.then(function (posts) { return posts.length; });
+                }
+            }
+        }).then(function (files) {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "1"
+            });
         });
     });
 });

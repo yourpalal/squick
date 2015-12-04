@@ -93,10 +93,6 @@ export = class Squick extends Transform {
 
         this.setupDust();
 
-        if ("content" in options) {
-            options.content.pipe(this);
-        }
-
         this.on("finish", () => this.emit("posts-ended"));
 
         options.views
@@ -118,6 +114,11 @@ export = class Squick extends Transform {
                 this.allTemplatesAvailable = true;
                 this.emit("templates-ended");
             });
+
+        if ("content" in options) {
+            options.content.pipe(this);
+        }
+
     }
 
     _transform(f: File, ignored, cb) {
@@ -137,7 +138,17 @@ export = class Squick extends Transform {
     }
 
     setupDust() {
-        this.baseContext = dust.makeBase({site: this.options.site || {}});
+        let globals = {
+            site: this.options.site || {},
+        } as any;
+        let options = {
+            all_posts: new Promise<Post[]>((resolve, reject) => {
+                this.once("error", reject);
+                this.once("posts-ended", () => resolve(this.posts));
+            })
+        };
+
+        this.baseContext = dust.makeBase(globals, options);
         dust.onLoad = (templateName: string, options, callback: Function) => {
             return this.getTemplate(templateName)
                 .then((template) => callback(null, template),

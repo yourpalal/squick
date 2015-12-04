@@ -157,8 +157,7 @@ declare module "dustjs-linkedin" {
     * Manufactures a dust.Context instance with its global object set to object.
     * @param global a plain object or an instance of dust.Context.
     */
-    export function makeBase(global: any): Context;
-    export function makeBase(global: Context): Context;
+    export function makeBase(global: Context|any, options?: any): Context;
 
     export function escapeHtml(html: string): string;
     export function escapeJs(js: string): string;

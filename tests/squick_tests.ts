@@ -111,6 +111,12 @@ let partialIncluder = new File({
     contents: new Buffer("cool {>\"partial.html\" /}, bro")
 });
 
+let postsCountTemplate = new File({
+    base: "/b/t/",
+    path: "/b/t/simple.html",
+    contents: new Buffer("{@postsCount /}")
+});
+
 
 function streamToPromise(s: Stream): Promise<File[]> {
     return new Promise((resolve, reject) => {
@@ -276,6 +282,23 @@ describe("squick", () => {
             return Promise.reject("did not produce error message");
         }, (err) => {
             err.toString().indexOf("simple.md").should.be.greaterThanOrEqual(0);
+        })
+    );
+
+    it("adds a all_posts Promise to the context options", () =>
+        squickToFiles([simpleContent], [postsCountTemplate], {
+            helpers: {
+                "postsCount": function(chunk, context) {
+                    return context.options.all_posts.then((posts) => posts.length);
+                }
+            }
+        }).then((files) => {
+            files.should.have.length(1);
+            files[0].should.be.vinylFile({
+                base: "/b/c/",
+                path: "/b/c/simple.html",
+                contents: "1"
+            });
         })
     );
 });
