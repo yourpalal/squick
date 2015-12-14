@@ -79,21 +79,26 @@ interface SquickOptions {
 }
 
 export = class Squick extends Transform {
+    private allPosts: Promise<Post[]>;
     private posts: Post[] = [];
 
-    private allPostsAvailable = false;
     private allTemplatesAvailable = false;
     private baseContext: dust.Context;
 
     constructor(private options: SquickOptions) {
         super({ objectMode: true });
+        this.setMaxListeners(100);
+
         if (this.options.marked) {
             marked.setOptions(this.options.marked);
         }
 
-        this.setupDust();
+        this.allPosts = new Promise<Post[]>((resolve, reject) => {
+            this.once("error", reject);
+            this.once("finish", () => resolve(this.posts));
+        });
 
-        this.on("finish", () => this.emit("posts-ended"));
+        this.setupDust();
 
         options.views
             .on("data", (f: File) => {
@@ -142,10 +147,7 @@ export = class Squick extends Transform {
             site: this.options.site || {},
         } as any;
         let options = {
-            all_posts: new Promise<Post[]>((resolve, reject) => {
-                this.once("error", reject);
-                this.once("posts-ended", () => resolve(this.posts));
-            })
+            all_posts: this.allPosts
         };
 
         this.baseContext = dust.makeBase(globals, options);
@@ -210,10 +212,6 @@ export = class Squick extends Transform {
 
         let error = `cannot find post ${name}`;
 
-        if (this.allPostsAvailable) {
-            return Promise.reject(error);
-        }
-
         return new Promise((resolve, reject) => {
             let available = (post) => {
                 if (post.name() == name) {
@@ -223,7 +221,10 @@ export = class Squick extends Transform {
             };
 
             this.on("post-available", available);
-            this.once("posts-ended", () => reject(error));
+            this.allPosts.then(() => {
+                this.removeListener("post-available", available);
+                reject(error);
+            });
         });
     }
 
@@ -241,12 +242,6 @@ export = class Squick extends Transform {
         this.emit("post-available", post);
 
         return this.renderPostForFile(post);
-    }
-
-    endIfFinished() {
-        if (this.allPostsAvailable) {
-            this.push(null);
-        }
     }
 
     addTemplate(file: File) {
@@ -272,15 +267,20 @@ export = class Squick extends Transform {
         }
 
         return new Promise((resolve, reject) => {
-            let onFinished = () => reject(`template ${name} not found`);
-            let onAvailable = (templateName) => {
+            var onAvailable: Function;
+            let onFinished = () => {
+                this.removeListener("template-available", onAvailable);
+                reject(errorMessage);
+            };
+            onAvailable = (templateName) => {
                 if (templateName == name) {
                     resolve();
                     this.removeListener("template-available", onAvailable);
+                    this.removeListener("templates-ended", onFinished);
                 }
             };
             this.on("template-available", onAvailable);
-            this.on("templates-ended", onFinished);
+            this.once("templates-ended", onFinished);
         });
     }
 
