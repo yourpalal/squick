@@ -1,6 +1,6 @@
 {
   "name": "squick",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "dustjs + markdown for gulp",
   "main": "./lib/index.js",
   "homepage": "https://github.com/yourpalal/squick",
