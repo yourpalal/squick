@@ -1,14 +1,16 @@
+"use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var Squick = require("../lib/index");
+var buffer = require("vinyl-buffer");
 var concat = require("concat-stream");
 var dust = require("dustjs-linkedin");
 var stream_1 = require("stream");
 var File = require("vinyl");
-var buffer = require("vinyl-buffer");
+var path = require("path");
 var should = require("should");
 should["Assertion"].add("vinylFile", function (expected) {
     this.params = { operator: "to be a vinyl file" };
@@ -35,71 +37,40 @@ var Src = (function (_super) {
     };
     return Src;
 })(stream_1.Readable);
-var simpleTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("page content: {post.content}")
-});
-var badTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("{% wow %}")
-});
-var conditionalTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("{@eq key=post.name value=nope}YES{:else}NO{/eq}")
-});
-var customFilter = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("{post.content|catify}")
-});
-var customHelper = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("{@meow /}")
-});
-var siteTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("site msg: {site.msg}")
-});
-var badJSON = new File({
-    base: "/b/c/",
-    path: "/b/c/bad.md",
-    contents: new Buffer("{nope00----} wow")
-});
-var simpleContent = new File({
-    base: "/b/c/",
-    path: "/b/c/simple.md",
-    contents: new Buffer("{\"template\": \"simple.html\"} wow")
-});
-var includerContent = new File({
-    base: "/b/c/",
-    path: "/b/c/lots.md",
-    contents: new Buffer("{\"template\": \"fetch.html\", \"include\": [\"simple.md\", \"simple.md\"] }neat")
-});
-var includerTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/fetch.html",
-    contents: new Buffer("{post.content}{@fetch paths=post.meta.include as=\"article\"}{article.content}{/fetch}")
-});
-var partial = new File({
-    base: "b/t/",
-    path: "b/t/partial.html",
-    contents: new Buffer("partial")
-});
-var partialIncluder = new File({
-    base: "b/t/",
-    path: "b/t/simple.html",
-    contents: new Buffer("cool {>\"partial.html\" /}, bro")
-});
-var postsCountTemplate = new File({
-    base: "/b/t/",
-    path: "/b/t/simple.html",
-    contents: new Buffer("{@postsCount /}")
-});
+function template(content, name) {
+    if (name === void 0) { name = "simple.html"; }
+    return new File({
+        base: "/b/t/",
+        path: path.join("/b/t/", name),
+        contents: new Buffer(content)
+    });
+}
+function post(name, frontMatter, content) {
+    frontMatter = frontMatter ? JSON.stringify(frontMatter) : "";
+    return new File({
+        base: "/b/c/",
+        path: path.join("/b/c/", name),
+        contents: new Buffer(frontMatter + content)
+    });
+}
+var conditionalTemplate = template("{@eq key=post.name value=nope}YES{:else}NO{/eq}");
+var includerTemplate = template("{post.content}\n{@fetch paths=post.meta.include as=\"article\"}\n    |{article.content}\n{/fetch}", "fetch.html");
+var badTemplate = template("{% wow %}");
+var simpleTemplate = template("page content: {post.content}");
+var partial = template("partial", "partial.html");
+var partialIncluder = template("cool {>\"partial.html\" /}, bro");
+var postsCountTemplate = template("{@postsCount /}");
+var customFilter = template("{post.content|catify}");
+var customHelper = template("{@meow /}");
+var siteTemplate = template("site msg: {site.msg}");
+var badJSON = post("bad.md", null, "{nope00----} wow");
+var simpleContent = post("simple.md", {
+    template: "simple.html",
+}, "wow");
+var includerContent = post("lots.md", {
+    template: "fetch.html",
+    include: ["simple.md", "simple.md"]
+}, "neat");
 function streamToPromise(s) {
     return new Promise(function (resolve, reject) {
         s.on("error", function (err) { return reject(err); });
@@ -126,7 +97,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: new Buffer("page content:  wow")
+                contents: new Buffer("page content: wow")
             });
         });
     });
@@ -139,7 +110,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: new Buffer("page content:  wow")
+                contents: new Buffer("page content: wow")
             });
         });
     });
@@ -173,7 +144,7 @@ describe("squick", function () {
             files[1].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/lots.html",
-                contents: "neat wow wow"
+                contents: "neat|wow|wow"
             });
         }));
     });
@@ -198,7 +169,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: "meow  wow meow"
+                contents: "meow wow meow"
             });
         });
     });
