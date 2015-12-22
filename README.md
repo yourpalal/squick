@@ -42,11 +42,29 @@ The following configuration keys are recognized by Squick:
 Each markdown file can have a JSON-formatted object at the start of the file which will be extracted and passed to templates as `post.meta`. The following keys have special significance. No whitespace is allowed ahead of the JSON object.
 
 * `template` specifies the template to be used when rendering this post
+* `title` specifies the title of the post
 
 ### Template Environment
 
 The templates are rendered via [dustjs](http://www.dustjs.com/docs/api/). In addition to the standard dust filters, Squick includes the [dustjs-helpers](http://www.dustjs.com/guides/dust-helpers/) and a few helpers and filters, listed below. You can also add custom filters and helpers via the `filters`
 and `helpers` configuration key.
+
+#### variables
+
+The following variables are available to your templates:
+
+ * `post` a post object (see below) for the current post
+ * `site` whatever data was passed in as `site` in squick's configuration.
+
+#### post objects
+
+A Post object provides access to the content and front-matter for a given markdown file. It has the following properties:
+
+ * `meta` example: `{post.meta.tags}` the contents of the given post's front matter.
+ * `title` example `{post.title}` the title of the post. The title of the post is either:
+   1. the value of `title` in the front-matter
+   2. the value of the first header in the markdown content
+   3. the filename of the .md file, with '.md' removed, and with dashes replaced with spaces. (eg. "This-Cool-Post.md" would become "This Cool Post")
 
 #### helpers
 
@@ -54,6 +72,6 @@ and `helpers` configuration key.
 * `@fetch` takes a list of filenames and renders a block for each file. Useful for making an index page.
 
         {@fetch paths=post.meta.include as="article"}
-          <h1>{article.meta.title}</h1>
+          <h1>{article.title}</h1>
           {article.content}
         {/fetch}

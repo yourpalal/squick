@@ -271,4 +271,69 @@ describe("squick", () => {
             });
         })
     );
+
+    describe("can determine the title of a post through:", () => {
+        let hasMeta = post("cool-title.md", {
+            title: "wow",
+            template: "simple.html",
+        }, "# NEAT STUFF");
+
+        let hasH1HashTitle = post("cool-title.md", {
+            template: "simple.html",
+        }, "# NEAT STUFF");
+
+        let hasH2HashTitle = post("cool-title.md", {
+            template: "simple.html",
+        }, "# NEAT STUFF");
+
+        let hasEqualsTitle = post("cool-title.md", {
+            template: "simple.html",
+        }, "NEAT STUFF\n=======");
+
+        let hasDashesTitle = post("cool-title.md", {
+            template: "simple.html",
+        }, "NEAT STUFF\n----------");
+
+        let hasNoTitle = post("cool-title.md", {
+            template: "simple.html",
+        }, "oh dang");
+
+        let titleTemplate = template("{post.title}");
+
+        it("post.meta.title", () =>
+            squickToFiles([hasMeta], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("wow");
+            })
+        );
+
+        it("a # header", () =>
+            squickToFiles([hasH1HashTitle], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("NEAT STUFF");
+            })
+        );
+
+        it("a ## header", () =>
+            squickToFiles([hasH2HashTitle], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("NEAT STUFF");
+            })
+        );
+
+        it("a ==== header", () =>
+            squickToFiles([hasEqualsTitle], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("NEAT STUFF");
+            })
+        );
+
+        it("a ----- header", () =>
+            squickToFiles([hasEqualsTitle], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("NEAT STUFF");
+            })
+        );
+
+        it("the filename", () =>
+            squickToFiles([hasNoTitle], [titleTemplate]).then((files) => {
+                files[0].contents.toString().should.eql("cool title");
+            })
+        );
+    });
 });

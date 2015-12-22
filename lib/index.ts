@@ -5,8 +5,9 @@ import bl = require("bl");
 import dust = require("dustjs-helpers");
 import {EventEmitter} from "events";
 import * as glob from "glob";
-import * as marked from "marked";
 import gutil = require("gulp-util");
+import * as marked from "marked";
+import * as path from "path";
 import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
 
@@ -42,6 +43,37 @@ class Post {
 
     name(): string {
         return this.file.relative;
+    }
+
+    title(): string {
+        if (this.meta.title) {
+            return this.meta.title;
+        }
+
+        // match # THIS IS THE TITLE
+        let match = this.content.match(/\s*#+([^\n]*)/);
+        if (match) {
+            return match[1].trim();
+        }
+
+        // match
+        // THIS IS THE TITLE
+        // =================
+        match = this.content.match(/s*([^\n]*)\n=+/);
+        if (match) {
+            return match[1].trim();
+        }
+
+        // match
+        // THIS IS THE TITLE
+        // -----------------
+        match = this.content.match(/s*([^\n]*)\n-+/);
+        if (match) {
+            return match[1].trim();
+        }
+
+        let ext = path.extname(this.file.relative);
+        return path.basename(this.file.relative, ext).replace(/-+/, " ");
     }
 
     parseContents(source: string) {
