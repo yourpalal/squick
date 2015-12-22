@@ -97,7 +97,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: new Buffer("page content: wow")
+                contents: "page content: wow"
             });
         });
     });
@@ -110,7 +110,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: new Buffer("page content: wow")
+                contents: "page content: wow"
             });
         });
     });
@@ -120,7 +120,7 @@ describe("squick", function () {
             files[0].should.be.vinylFile({
                 base: "/b/c/",
                 path: "/b/c/simple.html",
-                contents: new Buffer("cool partial, bro")
+                contents: "cool partial, bro"
             });
         });
     });
