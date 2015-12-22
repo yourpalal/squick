@@ -68,7 +68,14 @@ A Post object provides access to the content and front-matter for a given markdo
 
 #### helpers
 
-* `@markdown` takes a string and converts it from markdown to HTML. Often useful as `{@markdown content=post.content /}`.
+* `@markdown` takes a string and converts it from markdown to HTML. The following uses of the markdown helper are roughly equivalent.
+
+        {@markdown content=post.content /}
+        {@markdown:post.content /}
+        {#post.content}<div class="wrapper">
+          {@markdown /}
+        </div>{/post.content}
+
 * `@fetch` takes a list of filenames and renders a block for each file. Useful for making an index page.
 
         {@fetch paths=post.meta.include as="article"}

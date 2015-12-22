@@ -235,6 +235,26 @@ describe("squick", function () {
             });
         });
     });
+    describe("the @markdown helper", function () {
+        var contextRenderTemplate = template("{@markdown:post.content/}");
+        var argRenderTemplate = template("{@markdown content=post.content/}");
+        var wrapperTemplate = template("{#post.content}<div>{@markdown /}</div>{/post.content}");
+        it("can render the current context", function () {
+            return squickToFiles([simpleContent], [contextRenderTemplate]).then(function (files) {
+                files[0].contents.toString().trim().should.eql("<p>wow</p>");
+            });
+        });
+        it("can render the current context", function () {
+            return squickToFiles([simpleContent], [argRenderTemplate]).then(function (files) {
+                files[0].contents.toString().trim().should.eql("<p>wow</p>");
+            });
+        });
+        it("can render the current context in a block", function () {
+            return squickToFiles([simpleContent], [wrapperTemplate]).then(function (files) {
+                files[0].contents.toString().trim().should.eql("<div><p>wow</p>\n</div>");
+            });
+        });
+    });
     describe("can determine the title of a post through:", function () {
         var hasMeta = post("cool-title.md", {
             title: "wow",

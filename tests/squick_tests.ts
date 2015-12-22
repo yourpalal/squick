@@ -272,6 +272,30 @@ describe("squick", () => {
         })
     );
 
+    describe("the @markdown helper", () => {
+        let contextRenderTemplate = template("{@markdown:post.content/}");
+        let argRenderTemplate = template("{@markdown content=post.content/}");
+        let wrapperTemplate = template("{#post.content}<div>{@markdown /}</div>{/post.content}");
+
+        it("can render the current context", () =>
+            squickToFiles([simpleContent], [contextRenderTemplate]).then((files) => {
+                files[0].contents.toString().trim().should.eql("<p>wow</p>");
+            })
+        );
+
+        it("can render the current context", () =>
+            squickToFiles([simpleContent], [argRenderTemplate]).then((files) => {
+                files[0].contents.toString().trim().should.eql("<p>wow</p>");
+            })
+        );
+
+        it("can render the current context in a block", () =>
+            squickToFiles([simpleContent], [wrapperTemplate]).then((files) => {
+                files[0].contents.toString().trim().should.eql("<div><p>wow</p>\n</div>");
+            })
+        );
+    });
+
     describe("can determine the title of a post through:", () => {
         let hasMeta = post("cool-title.md", {
             title: "wow",

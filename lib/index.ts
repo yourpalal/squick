@@ -204,7 +204,8 @@ export = class Squick extends Transform {
         }
 
         dust.helpers["markdown"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
-            return chunk.write(marked(params.content || ""));
+            let fallback = (typeof context.current() == "string") ? context.current() : "";
+            return chunk.write(marked(params.content || fallback));
         };
 
         dust.helpers["fetch"] = (chunk: dust.Chunk, context: dust.Context, bodies, params) => {
