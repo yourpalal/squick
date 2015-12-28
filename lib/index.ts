@@ -25,6 +25,7 @@ class DustStream extends Readable {
                 this.emit("error", new gutil.PluginError({
                     plugin: "squick",
                     showProperties: false,
+                    stack: err.stack,
                     message: `Error while rendering ${name} with ${template}:\n\t${err}`
                 }));
             });
