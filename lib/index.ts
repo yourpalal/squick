@@ -12,6 +12,60 @@ import {Readable, Transform, Writable} from "stream";
 import File = require("vinyl");
 
 
+// PostDepot handles the making Promises for Post objects. By centralizing
+// this, we don't have to worry about making a ton of event listeners.
+class PostDepot {
+    waiting: {[name: string]: {
+        promise: Promise<Post>;
+        resolve(post: Post);
+    }};
+
+    listener: (post: Post) => void;
+
+    constructor(private squick: Squick) {
+        this.waiting = {};
+        this.listener = (post: Post) => this.handlePost(post);
+        squick.on("post-available", this.listener);
+        squick.allPosts.then(() => {
+            squick.removeListener("post-available", this.listener);
+        });
+    }
+
+    private handlePost(post: Post) {
+        if (post.name() in this.waiting) {
+            return this.waiting[post.name()].resolve(post);
+        }
+
+        this.waiting[post.name()] = {
+            promise: Promise.resolve(post),
+            resolve: () => 0
+        };
+    }
+
+    getPost(name: string): Promise<Post> {
+        let waiter = this.waiting[name];
+        if (waiter) {
+            return waiter.promise;
+        }
+
+        let resolver: (post: Post) => any = null;
+        let promise = new Promise<Post>((resolve, reject) => {
+            resolver = resolve;
+
+            let error = `cannot find post ${name}`;
+            this.squick.allPosts.then(() => reject(error));
+        });
+
+        this.waiting[name] = {
+            promise: promise,
+            resolve: resolver
+        };
+
+        return promise;
+    }
+}
+
+
 class DustStream extends Readable {
     constructor(template: string, context: dust.Context, name: string) {
         super();
@@ -111,12 +165,13 @@ interface SquickOptions {
     marked?: any;
 }
 
-export = class Squick extends Transform {
-    private allPosts: Promise<Post[]>;
+class Squick extends Transform {
+    allPosts: Promise<Post[]>;
     private posts: Post[] = [];
 
     private allTemplatesAvailable = false;
     private baseContext: dust.Context;
+    private postDepot: PostDepot;
 
     constructor(private options: SquickOptions) {
         super({ objectMode: true });
@@ -130,6 +185,7 @@ export = class Squick extends Transform {
             this.once("error", reject);
             this.once("finish", () => resolve(this.posts));
         });
+        this.postDepot = new PostDepot(this);
 
         this.setupDust();
 
@@ -238,28 +294,7 @@ export = class Squick extends Transform {
     }
 
     getPost(name: string): Promise<Post> {
-        for (var post of this.posts) {
-            if (post.name() == name) {
-                return Promise.resolve(post);
-            }
-        }
-
-        let error = `cannot find post ${name}`;
-
-        return new Promise((resolve, reject) => {
-            let available = (post) => {
-                if (post.name() == name) {
-                    resolve(post);
-                    this.removeListener("post-available", available);
-                }
-            };
-
-            this.on("post-available", available);
-            this.allPosts.then(() => {
-                this.removeListener("post-available", available);
-                reject(error);
-            });
-        });
+        return this.postDepot.getPost(name);
     }
 
     addPost(file: File): File {
@@ -308,9 +343,9 @@ export = class Squick extends Transform {
             };
             onAvailable = (templateName) => {
                 if (templateName == name) {
-                    resolve();
                     this.removeListener("template-available", onAvailable);
                     this.removeListener("templates-ended", onFinished);
+                    resolve();
                 }
             };
             this.on("template-available", onAvailable);
@@ -337,3 +372,5 @@ export = class Squick extends Transform {
         return stream;
     }
 }
+
+export = Squick;
